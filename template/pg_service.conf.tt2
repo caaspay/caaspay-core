@@ -1,0 +1,9 @@
+[% FOREACH service IN pg_service -%]
+[[% service.name %]]
+host=[% service.host %]
+port=5432
+user=postgres
+dbname=[% service.dbname %]
+password=[% service.password %]
+
+[% END -%]
