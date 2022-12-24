@@ -1,0 +1,67 @@
+version: "3.2"
+
+services:
+
+[% FOREACH service IN service_list -%]
+  [% service.service %]:
+[%   FOREACH deployment IN service.config.docker_deployment.keys.sort -%]
+    [% deployment %]: [% service.config.docker_deployment.$deployment %]
+[%   END -%]
+[%   IF service.config.command.size -%]
+    command: ["[% service.config.command.join('", "') %]"]
+[%   END -%]
+[%   IF service.config.env_file -%]
+    env_file:
+      - [% service.config.env_file %]
+[%   ELSIF !service.config.environment.empty -%]
+    environment:
+[%     FOREACH env IN service.config.environment.keys.sort -%]
+      - [% env %]=[% service.config.environment.$env %]
+[%     END -%]
+[%   END -%]
+[%   IF service.config.port.size -%]
+    ports:
+[%     FOREACH port IN service.config.port -%]
+      - "[% port %]"
+[%     END -%]
+[%   END -%]
+[%   IF service.config.network.size -%]
+    networks:
+[%     FOREACH network IN service.config.network -%]
+      - [% network %]
+[%     END -%]
+[%   END -%]
+[%   IF service.config.volume.size -%]
+    volumes:
+[%     FOREACH volume IN service.config.volume -%]
+      - [% volume %]
+[%     END -%]
+[%   END -%]
+[%   UNLESS service.config.custom.empty -%]
+[%     FOREACH custom IN service.config.custom.keys.sort -%]
+[%      IF service.config.custom.$custom.keys -%]
+    [% custom %]:
+[%       FOREACH key IN service.config.custom.$custom.keys.sort -%]
+      [% key %]: '[% service.config.custom.$custom.$key %]'
+[%       END -%]
+[%      ELSE -%]
+    [% custom %]: [% service.config.custom.$custom %]
+[%      END -%]
+[%     END -%]
+[%   END -%]
+
+[% END -%]
+
+volumes:
+[% FOREACH vol IN all_volumes -%]
+  [% vol %]:
+[% END -%]
+
+networks:
+  caddy-config_webtraffic:
+    external: true
+  metrics_statstraffic:
+    external: true
+[% FOREACH network IN all_networks -%]
+  [% network %]:
+[% END -%]

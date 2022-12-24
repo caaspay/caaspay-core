@@ -1,0 +1,7 @@
+libreadline-dev
+build-essential
+make
+gcc
+git
+libssl-dev
+libz-dev
