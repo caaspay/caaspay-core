@@ -1,1 +1,0 @@
-FROM deriv/myriad:stable

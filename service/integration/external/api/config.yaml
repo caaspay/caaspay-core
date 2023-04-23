@@ -1,0 +1,6 @@
+setting:
+  helper_dependency:
+    base_helper:
+      - fastapi
+    support_helper:
+      - redis

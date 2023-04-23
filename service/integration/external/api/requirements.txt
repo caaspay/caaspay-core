@@ -1,0 +1,15 @@
+fastapi==0.95.1
+uvicorn
+pydantic
+fastapi-utils
+itsdangerous
+python-multipart
+httpx
+starlette
+python-jose
+passlib
+secure
+loguru
+
+redis
+aredis

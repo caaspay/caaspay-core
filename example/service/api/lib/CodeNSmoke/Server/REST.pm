@@ -2,7 +2,7 @@ package CodeNSmoke::Server::REST;
 
 use Object::Pad;
 
-class CodeNSmoke::Server::REST extends IO::Async::Notifier;
+class CodeNSmoke::Server::REST isa IO::Async::Notifier;
 
 
 use Future::AsyncAwait;
