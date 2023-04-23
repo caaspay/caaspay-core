@@ -1,4 +1,4 @@
-package Service::Control::Authentication::Login;
+package Control::Authentication::Login;
 
 use Myriad::Service;
 
@@ -9,7 +9,7 @@ async method startup() {
 
 async method test_rpc : RPC (%args) {
     $log->warnf('Method TEST_RPC: %s', \%args);
-    return { success => 1 };
+    return { success => 1, name => 'Motaz' };
 }
 
 1;
