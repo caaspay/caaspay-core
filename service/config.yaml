@@ -2,14 +2,15 @@ helper:
   myriad:
     environment:
       MYRIAD_TRANSPORT: redis
-      MYRIAD_TRANSPORT_CLUSTER: 1
-      MYRIAD_TRANSPORT_REDIS: redis://redis-node-0:6379
       MYRIAD_LOG_LEVEL: info
       MYRIAD_LIBRARY_PATH: /opt/app/lib
+  fastapi:
+    environment:
+      LOG_LEVEL: info
 setting:
   redis:
     which:
-      - service/support/redis/main
+      - service/support/redis/single
 service_config:
   custom:
     restart: always

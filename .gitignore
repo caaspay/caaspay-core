@@ -1,0 +1,20 @@
+container_envs*/
+container_files*/
+docker-compose.yml
+previous_docker-compose.yml
+docker.restart_required
+sqitch.conf
+
+# development
+.env
+.vscode
+
+.idea
+.ipynb_checkpoints
+.mypy_cache
+__pycache__
+.pytest_cache
+
+# vim temporary files
+*~
+.*.sw?

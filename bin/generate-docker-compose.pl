@@ -632,6 +632,7 @@ sub base_helper_myriad {
         for my $redis ($config->{setting}{redis}{which}->@*) {
             $var_name = $var_name ? join('_', $var_name, $idx) : 'MYRIAD_TRANSPORT_REDIS';
             $svc_config->{environment}{$var_name} = $config->{infra_config}{redis}{$redis}{transport_uri};
+            $svc_config->{environment}{'MYRIAD_TRANSPORT_CLUSTER'} = $config->{infra_config}{redis}{$redis}{is_cluster};
             push $svc_config->{network}->@*, $config->{infra_config}{redis}{$redis}{network};
             $idx++;
         }
@@ -656,11 +657,63 @@ sub base_helper_myriad {
     # Set volume path
     $svc_config->{volume}{'./'.$dir->relative($base_dir)->stringify} = '/opt/app/';
     # Set command
-    $svc_config->{command} = ['CodeNSmoke::Service::']
+    $svc_config->{command} = ['Service::']
         if !$config->{service_config}{command}->@*;
     # set docker_deployment
     $svc_config->{docker_deployment}{image} = 'deriv/myriad:stable'
         unless exists $config->{service_config}{docker_deployment}{build};
+    # Do not reset preset config
+    $config->{service_config} = $merger->merge($svc_config, $config->{service_config});
+}
+
+=head3 base_helper_fastapi
+
+Helper for FastAPI services config
+
+=cut
+
+sub base_helper_fastapi {
+    my ($dir, $global_config, $config) = @_;
+
+    my $svc_config = $merger->merge(dclone($empty_service_config), $config->{helper}{fastapi});
+    # get support helpers settings
+    if ( exists $config->{setting}{redis}{which} ) {
+        my $var_name;
+        my $idx = 0;
+        for my $redis ($config->{setting}{redis}{which}->@*) {
+            $var_name = $var_name ? join('_', $var_name, $idx) : 'TRANSPORT_REDIS_URI';
+            $svc_config->{environment}{$var_name} = $config->{infra_config}{redis}{$redis}{transport_uri};
+            $svc_config->{environment}{'TRANSPORT_REDIS_NODE'} = $config->{infra_config}{redis}{$redis}{node};
+            $svc_config->{environment}{'TRANSPORT_REDIS_CLUSTER'} = $config->{infra_config}{redis}{$redis}{is_cluster} ? 'True' : 'False';
+            push $svc_config->{network}->@*, $config->{infra_config}{redis}{$redis}{network};
+            $idx++;
+        }
+    }
+    if ( exists $config->{infra_config}{datadog} ) {
+        $svc_config->{environment}{METRICS_HOST} = $config->{infra_config}{datadog}{datadog_agent_host};
+        $svc_config->{environment}{METRICS_ADAPTER} = 'DogStatsd';
+    }
+    if ( exists $config->{setting}{postgresql}{which} ) {
+        my @pg_services;
+        for my $postgresql ($config->{setting}{postgresql}{which}->@*) {
+            my $v_name = join '_', 'postgresql', ($postgresql =~ /service\/support\/postgresql\/(\w*)/)[0];
+            $svc_config->{environment}{"${v_name}_uri_$_"} = $config->{infra_config}{postgresql}{$postgresql}{postgresql_uri}{$_}
+                for keys $config->{infra_config}{postgresql}{$postgresql}{postgresql_uri}->%*;
+            $svc_config->{environment}{"${v_name}_db"} = $config->{infra_config}{postgresql}{$postgresql}{db_name};
+            push $svc_config->{network}->@*, $config->{infra_config}{postgresql}{$postgresql}{network};
+            push @pg_services, $config->{infra_config}{postgresql}{$postgresql}{service}->@*;
+        }
+        my $name = get_service_name($dir->relative($base_dir)->stringify);
+        write_pgservice_file($name, \@pg_services, $svc_config);
+    }
+    # Set command
+    my $fastapi_cmd = ["uvicorn", "main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000"];
+    push @$fastapi_cmd, '--reload' if $env eq 'development';
+    $svc_config->{command} = $fastapi_cmd if !$config->{service_config}{command}->@*;
+    # Set volume path
+    $svc_config->{volume}{'./'.$dir->relative($base_dir)->stringify} = '/code/';
+    # Expose port for development
+    push $svc_config->{port}->@*, '8000:8000' if $env eq 'development';
     # Do not reset preset config
     $config->{service_config} = $merger->merge($svc_config, $config->{service_config});
 }
@@ -755,7 +808,9 @@ sub support_helper_redis {
         $config->{infra_config}{redis}{$redis} = {
             redis_nodes => join(' ', @nodes),
             transport_uri => "redis://$nodes[0]:6379",
+            node => $nodes[0],
             network => $name,
+            is_cluster => @nodes > 1 ? 1: 0,
         };
         # helper service setting
         # to be used by helper services themselves

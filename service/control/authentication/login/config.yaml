@@ -1,0 +1,6 @@
+setting:
+  helper_dependency:
+    base_helper:
+      - myriad
+    support_helper:
+      - redis
