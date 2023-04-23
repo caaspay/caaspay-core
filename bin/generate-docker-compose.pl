@@ -657,8 +657,9 @@ sub base_helper_myriad {
     # Set volume path
     $svc_config->{volume}{'./'.$dir->relative($base_dir)->stringify} = '/opt/app/';
     # Set command
-    $svc_config->{command} = ['Service::']
-        if !$config->{service_config}{command}->@*;
+    my $name = get_service_name($dir->relative($base_dir)->stringify);
+    my $cmd = ucfirst((split '-', $name)[0]) . '::';
+    $svc_config->{command} = [$cmd] if !$config->{service_config}{command}->@*;
     # set docker_deployment
     $svc_config->{docker_deployment}{image} = 'deriv/myriad:stable'
         unless exists $config->{service_config}{docker_deployment}{build};

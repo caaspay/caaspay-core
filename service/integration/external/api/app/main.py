@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 import asyncio
 from loguru import logger
 
@@ -79,7 +79,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()): # add DB sess
     #   enqueue = True)
     test_key = await transport.get_test_key()
     await transport.subscribe()
-    result = await transport.client_rpc.call('service_test', 'test_call', {"arg1": 'arg1v', "arg2": 'arg2v'})
+    result = await transport.client_rpc.call('control.authentication.login', 'test_rpc', {"arg1": 'arg1v', "arg2": 'arg2v'})
     logger.info("LOGIN: username: " + account.username + " ( " + transport.test() + " ) | password: " + account.password + " | account: " + account.account)
     logger.info("RESULT: " + result.json())
-    return account
+    return result
