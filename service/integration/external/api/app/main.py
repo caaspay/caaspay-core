@@ -12,10 +12,9 @@ from starlette.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security import OAuth2PasswordRequestForm
-from transport.redis import TransportRedis
-from security.secure import get_current_user, authenticate, Login, get_login
+from transport.redis import TransportRedis, TransportClientRPC
+from security.secure import Authentication, get_current_user, authenticate, User, get_login
 
-import redis.asyncio as redis
 
 from pydantic import BaseSettings
 
@@ -26,7 +25,9 @@ class APISettings(BaseSettings):
 settings = APISettings()
 logger.info(f"ddd {settings.TRANSPORT_REDIS_CLUSTER}")
 transport = TransportRedis(settings.TRANSPORT_REDIS_NODE, settings.TRANSPORT_REDIS_CLUSTER)
-redis = redis.cluster.RedisCluster(host='support-redis-main-0', port=6379, decode_responses=True)
+
+def get_rpc():
+    return transport.client_rpc
 
 
 origins = [
@@ -71,8 +72,10 @@ def read_root():
 async def login(form_data: OAuth2PasswordRequestForm = Depends()): # add DB session
     username = form_data.username
     password = form_data.password
+    authentication = Authentication(transport.client_rpc)
 
-    login_repo = Login('test', 'pass')
+    login_user = User(**{"username": form_data.username, "password": form_data.password })
+    login_trial = await authentication.login(login_user)
     account = get_login('test')
     #logger.add("info.log",format="Log: [{extra[log_id]}: 
     #   {time} - {level} - {message} ", level="INFO", 

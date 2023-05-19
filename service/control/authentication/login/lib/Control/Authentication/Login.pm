@@ -9,7 +9,7 @@ async method startup() {
 
 async method test_rpc : RPC (%args) {
     $log->warnf('Method TEST_RPC: %s', \%args);
-    return { success => 1, name => 'Motaz' };
+    return { success => 1, name => 'Kyle' };
 }
 
 1;

@@ -36,9 +36,6 @@ class TransportMessage(BaseModel):
             raise HTTPException(status_code=500, detail="Internal Error - Malformed TransportMessage unmatching response")
         super().__init__(**kwargs)
 
-    def as_message(self):
-        return {"rpc": self.rpc, "who": self.who, "message_id": self.message_id, "deadline": self.deadline}
-
 def stream_name_from_service(service_name, method_name):
     return RPC_PREFIX + '.' + service_name + "." + RPC_SUFFIX + '/' + method_name 
 
