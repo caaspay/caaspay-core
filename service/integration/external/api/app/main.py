@@ -13,7 +13,7 @@ from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security import OAuth2PasswordRequestForm
 from transport.redis import TransportRedis, TransportClientRPC
-from security.secure import Authentication, get_current_user, authenticate, User, get_login
+from security.secure import Authentication, get_current_user, User, get_login
 
 
 from pydantic import BaseSettings
@@ -74,15 +74,19 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()): # add DB sess
     password = form_data.password
     authentication = Authentication(transport.client_rpc)
 
-    login_user = User(**{"username": form_data.username, "password": form_data.password })
+    login_user = User(**{"username": form_data.username, "password": form_data.password, "client_id": form_data.client_id, "client_secret": form_data.client_secret, "scopes": form_data.scopes,  "grant_type": form_data.grant_type })
     login_trial = await authentication.login(login_user)
-    account = get_login('test')
+    #account = get_login('test')
     #logger.add("info.log",format="Log: [{extra[log_id]}: 
     #   {time} - {level} - {message} ", level="INFO", 
     #   enqueue = True)
     test_key = await transport.get_test_key()
     await transport.subscribe()
-    result = await transport.client_rpc.call('control.authentication.login', 'test_rpc', {"arg1": 'arg1v', "arg2": 'arg2v'})
-    logger.info("LOGIN: username: " + account.username + " ( " + transport.test() + " ) | password: " + account.password + " | account: " + account.account)
+    result = await transport.client_rpc.call('control.authentication.login', 'login', {"arg1": 'arg1v', "arg2": 'arg2v'})
+    #logger.info("LOGIN: username: " + account.username + " ( " + transport.test() + " ) | password: " + account.password + " | account: " + account.account)
     logger.info("RESULT: " + result.json())
     return result
+
+#@app.get("/checkh")
+#def check(current_user: User = Depends(get_current_user),):
+#    return current_user
