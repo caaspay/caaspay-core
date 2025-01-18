@@ -1,0 +1,11 @@
+service_config:
+  docker_deployment:
+    image: docker.io/bitnami/neo4j:4
+  network:
+    - "caddy-config_webtraffic"
+
+setting:
+  helper_dependency:
+    support_helper:
+      - neo4j
+

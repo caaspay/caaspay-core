@@ -998,4 +998,46 @@ sub support_helper_mssql {
     }
 }
 
+=head3 support_helper_neo4j
+
+Helper for Neo4j service config
+
+=cut
+
+sub support_helper_neo4j {
+    my ($dir, $global_config, $config) = @_;
+    # Check global config for available neo4j(es)
+    for my $neo4j (grep /service\/support\/neo4j\/(\w*)/, keys %$global_config) {
+        my $neo4j_config = get_composite_config($neo4j, $global_config);
+        my $name = get_service_name($neo4j);
+        my @db_name = split '-', $name;
+        my @instances = sort keys $neo4j_config->{instance}->%*;
+        my @nodes = get_instance_nodes($neo4j, $global_config);
+        configure_node_credentials(\@nodes, $neo4j_config);
+        # helper infrastructure setting
+        # to be used by dependent services
+        $config->{infra_config}{neo4j}{$neo4j} = {
+            neo4j_nodes => join(' ', @nodes),
+            neo4j_uri => "http://$nodes[0]:7474",
+            neo4j_bolt => "bolt://$nodes[0]:7687",
+            db_name => $db_name[-1],
+            password => $neo4j_config->{service_config}{environment}{NEO4J_PASSWORD},
+            network => $name,
+        };
+        $all_networks->{$name} = 1;
+        # helper service setting
+        # to be used by helper services themselves
+        if ($dir->relative($base_dir)->subsumes("$neo4j")) {
+            my $svc_config = dclone($empty_service_config);
+            $svc_config->{environment}{PARTNER_NODES} = join(',', @nodes);
+
+            push $svc_config->{network}->@*, $name;
+            my $node = $nodes[0];
+            $all_volumes->{"$node-data"} = 1;
+            $svc_config->{volume}{"$node-data"} = '/bitnami';
+            $config->{service_config} = $merger->merge($config->{service_config}, $svc_config);
+        }
+    }
+}
+
 generate();
