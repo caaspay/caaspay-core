@@ -4,3 +4,7 @@ setting:
       - fastapi
     support_helper:
       - redis
+
+service_config:
+  network:
+    - "caddy-config_webtraffic"
