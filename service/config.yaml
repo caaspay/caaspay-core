@@ -10,7 +10,7 @@ helper:
 setting:
   redis:
     which:
-      - service/support/redis/single
+      - service/support/redis/main
 service_config:
   custom:
     restart: always
