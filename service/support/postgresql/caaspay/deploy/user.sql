@@ -16,53 +16,80 @@ BEGIN
     END IF;
 END $$;
 
--- Create audit table
+-- Create partitioned audit table
 CREATE TABLE IF NOT EXISTS user_mgmt.audit (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    resource_type VARCHAR(255) NOT NULL,
+    id UUID DEFAULT gen_random_uuid(),
+    resource_type TEXT NOT NULL,
     resource_id UUID NOT NULL,
-    operation VARCHAR(10) NOT NULL, -- INSERT, UPDATE, DELETE
+    operation TEXT NOT NULL, -- INSERT, UPDATE, DELETE
     old_value JSONB,
     new_value JSONB,
     changed_by UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, created_at) -- Include partitioning column in the primary key
+) PARTITION BY RANGE (created_at);
 
--- Create log table
+-- Create a default audit partition
+CREATE TABLE IF NOT EXISTS user_mgmt.audit_default PARTITION OF user_mgmt.audit
+    FOR VALUES FROM (MINVALUE) TO (MAXVALUE);
+
+-- Create partitioned log table
 CREATE TABLE IF NOT EXISTS user_mgmt.log (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    log_level VARCHAR(10) NOT NULL, -- INFO, WARN, ERROR
+    id UUID DEFAULT gen_random_uuid(),
+    resource_type TEXT NOT NULL,
+    resource_id UUID NOT NULL,
+    log_level TEXT NOT NULL, -- INFO, WARN, ERROR
     message TEXT NOT NULL,
     context JSONB,
     created_by UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, created_at) -- Include partitioning column in the primary key
+) PARTITION BY RANGE (created_at);
+
+-- Create a default log partition
+CREATE TABLE IF NOT EXISTS user_mgmt.log_default PARTITION OF user_mgmt.log
+    FOR VALUES FROM (MINVALUE) TO (MAXVALUE);
+
+-- Create partitioned access_log table
+CREATE TABLE IF NOT EXISTS user_mgmt.access_log (
+    id UUID DEFAULT gen_random_uuid(),
+    resource_type TEXT NOT NULL,
+    resource_id UUID NOT NULL,
+    operation TEXT NOT NULL, -- READ, WRITE
+    accessed_by UUID,
+    accessed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, accessed_at) -- Include partitioning column in the primary key
+) PARTITION BY RANGE (accessed_at);
+
+-- Create a default access_log partition
+CREATE TABLE IF NOT EXISTS user_mgmt.access_log_default PARTITION OF user_mgmt.access_log
+    FOR VALUES FROM (MINVALUE) TO (MAXVALUE);
 
 -- Create company table
 CREATE TABLE user_mgmt.company (
     id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    website VARCHAR(255),
-    telephone VARCHAR(20),
+    name TEXT NOT NULL UNIQUE,
+    website TEXT,
+    telephone TEXT,
     address TEXT,
     created_by UUID,
     updated_by UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create user table
 CREATE TABLE user_mgmt.user (
     id UUID PRIMARY KEY,
     company_id UUID REFERENCES user_mgmt.company(id) ON DELETE CASCADE,
-    username VARCHAR(255) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    status TEXT NOT NULL DEFAULT 'active',
     created_by UUID,
     updated_by UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insert system user if not exists
@@ -91,32 +118,32 @@ END $$;
 CREATE TABLE user_mgmt.group (
     id UUID PRIMARY KEY,
     company_id UUID REFERENCES user_mgmt.company(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by UUID,
+    updated_by UUID,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create permission table
 CREATE TABLE user_mgmt.permission (
     id UUID PRIMARY KEY,
     company_id UUID REFERENCES user_mgmt.company(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by UUID,
+    updated_by UUID,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create user_group_relation table
 CREATE TABLE user_mgmt.user_group_relation (
     user_id UUID REFERENCES user_mgmt.user(id) ON DELETE CASCADE,
     group_id UUID REFERENCES user_mgmt.group(id) ON DELETE CASCADE,
-    created_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, group_id)
 );
 
@@ -124,13 +151,27 @@ CREATE TABLE user_mgmt.user_group_relation (
 CREATE TABLE user_mgmt.feature (
     id UUID PRIMARY KEY,
     company_id UUID REFERENCES user_mgmt.company(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_mgmt.user(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by UUID,
+    updated_by UUID,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add references to user_mgmt.user
+ALTER TABLE user_mgmt.company ADD CONSTRAINT fk_company_created_by FOREIGN KEY (created_by) REFERENCES user_mgmt.user (id);
+ALTER TABLE user_mgmt.company ADD CONSTRAINT fk_company_updated_by FOREIGN KEY (updated_by) REFERENCES user_mgmt.user (id);
+
+ALTER TABLE user_mgmt.group ADD CONSTRAINT fk_group_created_by FOREIGN KEY (created_by) REFERENCES user_mgmt.user (id);
+ALTER TABLE user_mgmt.group ADD CONSTRAINT fk_group_updated_by FOREIGN KEY (updated_by) REFERENCES user_mgmt.user (id);
+
+ALTER TABLE user_mgmt.permission ADD CONSTRAINT fk_permission_created_by FOREIGN KEY (created_by) REFERENCES user_mgmt.user (id);
+ALTER TABLE user_mgmt.permission ADD CONSTRAINT fk_permission_updated_by FOREIGN KEY (updated_by) REFERENCES user_mgmt.user (id);
+
+ALTER TABLE user_mgmt.log ADD CONSTRAINT fk_log_created_by FOREIGN KEY (created_by) REFERENCES user_mgmt.user (id);
+
+ALTER TABLE user_mgmt.access_log ADD CONSTRAINT fk_access_log_accessed_by FOREIGN KEY (accessed_by) REFERENCES user_mgmt.user (id);
 
 -- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION user_mgmt.update_timestamp()
@@ -167,16 +208,16 @@ CREATE OR REPLACE FUNCTION user_mgmt.record_audit()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
-        INSERT INTO user_mgmt.audit (resource_type, resource_id, operation, new_value, changed_by)
-        VALUES (TG_TABLE_NAME, NEW.id, TG_OP, to_jsonb(NEW), current_setting('app.user_id')::UUID);
+        INSERT INTO user_mgmt.audit (resource_type, resource_id, operation, new_value, changed_by, created_at)
+        VALUES (TG_TABLE_NAME, NEW.id, TG_OP, to_jsonb(NEW), current_setting('app.user_id')::UUID, NEW.created_at);
         RETURN NEW;
     ELSIF (TG_OP = 'UPDATE') THEN
-        INSERT INTO user_mgmt.audit (resource_type, resource_id, operation, old_value, new_value, changed_by)
-        VALUES (TG_TABLE_NAME, OLD.id, TG_OP, to_jsonb(OLD), to_jsonb(NEW), current_setting('app.user_id')::UUID);
+        INSERT INTO user_mgmt.audit (resource_type, resource_id, operation, old_value, new_value, changed_by, created_at)
+        VALUES (TG_TABLE_NAME, OLD.id, TG_OP, to_jsonb(OLD), to_jsonb(NEW), current_setting('app.user_id')::UUID, NEW.created_at);
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
-        INSERT INTO user_mgmt.audit (resource_type, resource_id, operation, old_value, changed_by)
-        VALUES (TG_TABLE_NAME, OLD.id, TG_OP, to_jsonb(OLD), current_setting('app.user_id')::UUID);
+        INSERT INTO user_mgmt.audit (resource_type, resource_id, operation, old_value, changed_by, created_at)
+        VALUES (TG_TABLE_NAME, OLD.id, TG_OP, to_jsonb(OLD), current_setting('app.user_id')::UUID, OLD.created_at);
         RETURN OLD;
     END IF;
 END;
