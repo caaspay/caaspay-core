@@ -1,0 +1,12 @@
+instance:
+  0:
+  1:
+
+service_config:
+  docker_deployment:
+    image: bitnami/postgresql-repmgr:17.2.0
+
+setting:
+  helper_dependency:
+    support_helper:
+      - postgresql
