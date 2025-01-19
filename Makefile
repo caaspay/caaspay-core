@@ -41,7 +41,7 @@ ifdef exclude
     args += --exclude=${exclude}
 endif
 
-.PHONY: help generate docker-compose.yml delploy down clean-volumes clean-dirs clean-compose redis-cli
+.PHONY: help generate docker-compose.yml delploy down clean-volumes clean-dirs clean-compose redis-cli psql
 
 help:
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -54,7 +54,7 @@ docker-compose.yml: ## Generate docker-compose.yml file only
     
 deploy: generate ## Generate, build and deploy on update only
 ifneq ("$(wildcard ${RESTART_FLAG})","")
-	docker-compose build
+	docker compose build
 #    docker-compose up -d
 	rm ${RESTART_FLAG}
 	@echo updated
@@ -66,13 +66,13 @@ generate: docker-compose.yml ## Generate needed config
 	@echo Done
 
 restart: ## restart services
-	docker-compose restart
+	docker compose restart
 
 logs:  ## follow logs for services
-	docker-compose logs --tail=50 -f
+	docker compose logs --tail=50 -f
 
 down: ## bring down and stop services
-	docker-compose down --remove-orphans
+	docker compose down --remove-orphans
 clean-volumes: ## remove created volumes (Complete data removal)
 	docker volume ls | grep ${PROJECT} | awk '{print $$2}' | xargs docker volume rm 
 clean-compose: ## remove generated docker-compose.yml file
@@ -88,10 +88,15 @@ redis-cli: ## redis-cli for any needed instance. (which=name_of_redis  node=inst
 redis-cluster-rejoin: ## rejoin redis cluster nodes
 	docker run --rm -v $(ROOT_DIR):/repo --entrypoint /bin/bash --network codensmoke_support-redis-main deriv/myriad -c '/repo/bin/redis-cluster-rejoin.pl'
 
+psql: node ?= 0
+psql: ## psql container to run queries in $db e.g make psql db=payout node=0
+	test -n "${db}"
+	docker run -it --rm --network ${PROJECT}_support-postgresql bitnami/postgresql:17 psql -h support-postgresql-${db}-${node} -U postgres -d ${db}
+
 sqitch: ## Sqitch container to executing a $cmd on a $db. e.g. `make sqitch db=payout cmd=status`
 	test -n "${cmd}"
 	test -n "${db}"
-	docker run --rm --network ${PROJECT}_support-postgresql -v ${ROOT_DIR}:/repo -w /repo/service/support/postgresql/${db} sqitch/sqitch ${cmd}
+	docker run --rm --user ${UID}:${GID} --network ${PROJECT}_support-postgresql -v ${ROOT_DIR}:/repo -w /repo/service/support/postgresql/${db} sqitch/sqitch ${cmd}
 
 sqitch-init: ## Sqitch initialize a support postgresql database. e.g. `make sqitch-init db=payout password=change_me
 	test -n "${db}"
@@ -101,6 +106,7 @@ ifeq ("$(wildcard service/support/postgresql/${db}/sqitch.conf)","")
 else
 	@echo already initialized!
 endif
+
 
 # add redis cluster fix
 
