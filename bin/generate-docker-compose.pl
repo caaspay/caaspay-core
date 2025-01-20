@@ -1040,4 +1040,53 @@ sub support_helper_neo4j {
     }
 }
 
+=head3 support_helper_directus
+
+Helper for Directus service config
+
+=cut
+
+sub support_helper_directus {
+    my ($dir, $global_config, $config) = @_;
+    # Check global config for available neo4j(es)
+    for my $directus (grep /service\/support\/directus\/(\w*)/, keys %$global_config) {
+        my $directus_config = get_composite_config($directus, $global_config);
+        my $name = get_service_name($directus);
+        my @db_name = split '-', $name;
+        my @instances = sort keys $directus_config->{instance}->%*;
+        my @nodes = get_instance_nodes($directus, $global_config);
+        configure_node_credentials(\@nodes, $directus_config);
+        # helper infrastructure setting
+        # to be used by dependent services
+        $config->{infra_config}{directus}{$directus} = {
+            neo4j_nodes => join(' ', @nodes),
+            neo4j_uri => "http://$nodes[0]:7474",
+            neo4j_bolt => "bolt://$nodes[0]:7687",
+            db_name => $db_name[-1],
+            network => $name,
+        };
+        $all_networks->{$name} = 1;
+        # helper service setting
+        # to be used by helper services themselves
+        if ($dir->relative($base_dir)->subsumes("$directus")) {
+            my $svc_config = dclone($empty_service_config);
+            $svc_config->{environment}{PARTNER_NODES} = join(',', @nodes);
+            $svc_config->{environment}{DB_CLIENT} = 'pg';
+            $svc_config->{environment}{CACHE_ENABLED} = 'true';
+            $svc_config->{environment}{CACHE_AUTO_PURGE} = 'true';
+            $svc_config->{environment}{CACHE_STORE} = 'redis';
+            $svc_config->{environment}{REDIS} = 'redis://support-redis-directus:6379';
+            $svc_config->{environment}{EXTENSIONS_AUTOLOAD} = 'true';
+
+            push $svc_config->{network}->@*, $name;
+            my $node = $nodes[0];
+            $all_volumes->{"$node-uploads"} = 1;
+            $svc_config->{volume}{"$node-uploads"} = '/directus/uploads';
+            $all_volumes->{"$node-extensions"} = 1;
+            $svc_config->{volume}{"$node-extensions"} = '/directus/extensions';
+            $config->{service_config} = $merger->merge($config->{service_config}, $svc_config);
+        }
+    }
+}
+
 generate();

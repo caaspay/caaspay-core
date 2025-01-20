@@ -1,0 +1,18 @@
+service_config:
+  docker_deployment:
+    image: docker.io/directus/directus:11.4.0
+  network:
+    - "caddy-config_webtraffic"
+  environment:
+    DB_CLIENT: pg
+    DB_HOST: support-postgresql-caaspay-0
+    DB_PORT: 5432
+    DB_DATABASE: caaspay
+    DB_USER: postgres
+    DATABASE_SCHEMA: user_mgmt,transaction,pp,customer
+
+setting:
+  helper_dependency:
+    support_helper:
+      - directus
+

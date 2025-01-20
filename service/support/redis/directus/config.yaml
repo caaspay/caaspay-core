@@ -1,0 +1,13 @@
+service_config:
+  environment:
+    REDIS_DNS_RETRIES: 30
+    ALLOW_EMPTY_PASSWORD: yes
+  docker_deployment:
+    image: docker.io/bitnami/redis:7.4-debian-12
+
+
+setting:
+  helper_dependency:
+    support_helper:
+      - redis
+
