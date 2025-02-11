@@ -5,6 +5,7 @@
 user 2025-01-10T12:01:27Z sqitch <sqitch@cc643517acd0> # [core] Add user schema
 customer 2025-01-10T12:01:27Z sqitch <sqitch@cc643517acd0> # [core] Add customer schema
 pp 2025-01-10T12:01:27Z sqitch <sqitch@cc643517acd0> # [core] Add payment processor schema
+pm 2025-01-10T12:01:27Z sqitch <sqitch@cc643517acd0> # [core] Add payment method schema
 transaction 2025-01-10T12:01:27Z sqitch <sqitch@cc643517acd0> # [core] Add transaction schema
 user_functions 2025-01-10T12:01:27Z sqitch <sqitch@cc643517acd0> # [core] Add user functions
 @v1.0.0 2025-01-18T16:07:26Z sqitch <sqitch@6442d3ea0690> # Tag v1.0.0
